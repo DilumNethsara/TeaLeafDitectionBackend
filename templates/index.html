@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tea Disease Classifier</title>
+  <style>
+    :root { color-scheme: dark; }
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      background: linear-gradient(135deg, #0f172a, #1e293b);
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .card {
+      width: min(900px, 100%);
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 20px;
+      padding: 24px;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.3);
+    }
+    h1 { margin-top: 0; }
+    .controls { display: grid; gap: 12px; margin-bottom: 20px; }
+    input[type="file"] { color: #cbd5e1; }
+    button {
+      background: #22c55e;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover { background: #16a34a; }
+    .result { display: grid; gap: 14px; margin-top: 20px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .panel {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      border-radius: 14px;
+      padding: 14px;
+    }
+    img { width: 100%; border-radius: 12px; display: block; }
+    .muted { color: #94a3b8; font-size: 0.95rem; }
+    .prob-list { margin: 0; padding-left: 18px; }
+    .prob-list li { margin-bottom: 6px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>Tea Leaf Disease Classifier</h1>
+    <p class="muted">Upload a tea leaf image to get the predicted disease and a Grad-CAM explanation.</p>
+
+    <div class="controls">
+      <input id="imageInput" type="file" accept="image/*" />
+      <button id="predictBtn" type="button">Analyze Image</button>
+    </div>
+
+    <div id="status" class="muted">No image selected yet.</div>
+
+    <div class="result" id="resultArea" style="display:none;">
+      <div class="grid">
+        <div class="panel">
+          <h3>Uploaded Image</h3>
+          <img id="inputImage" alt="Uploaded preview" />
+        </div>
+        <div class="panel">
+          <h3>Prediction</h3>
+          <div id="predictionText"></div>
+          <h4>Probabilities</h4>
+          <ul id="probabilities" class="prob-list"></ul>
+        </div>
+      </div>
+      <div class="panel">
+        <h3>Grad-CAM Overlay</h3>
+        <img id="gradcamImage" alt="Grad-CAM explanation" />
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const imageInput = document.getElementById('imageInput');
+    const predictBtn = document.getElementById('predictBtn');
+    const status = document.getElementById('status');
+    const resultArea = document.getElementById('resultArea');
+    const inputImage = document.getElementById('inputImage');
+    const gradcamImage = document.getElementById('gradcamImage');
+    const predictionText = document.getElementById('predictionText');
+    const probabilities = document.getElementById('probabilities');
+
+    imageInput.addEventListener('change', () => {
+      const file = imageInput.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (e) => inputImage.src = e.target.result;
+        reader.readAsDataURL(file);
+      }
+    });
+
+    predictBtn.addEventListener('click', async () => {
+      const file = imageInput.files[0];
+      if (!file) {
+        status.textContent = 'Please choose an image first.';
+        return;
+      }
+
+      status.textContent = 'Analyzing image...';
+      resultArea.style.display = 'none';
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('/explain', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await response.json();
+
+        if (!response.ok) throw new Error(data.detail || 'Request failed');
+
+        predictionText.innerHTML = `<strong>${data.predicted_class}</strong><br/><span class="muted">Confidence: ${(data.confidence * 100).toFixed(1)}%</span>`;
+
+        probabilities.innerHTML = '';
+        Object.entries(data.probabilities).forEach(([label, value]) => {
+          const li = document.createElement('li');
+          li.textContent = `${label}: ${(value * 100).toFixed(1)}%`;
+          probabilities.appendChild(li);
+        });
+
+        gradcamImage.src = data.gradcam_overlay;
+        resultArea.style.display = 'block';
+        status.textContent = 'Analysis complete.';
+      } catch (error) {
+        status.textContent = `Error: ${error.message}`;
+      }
+    });
+  </script>
+</body>
+</html>
