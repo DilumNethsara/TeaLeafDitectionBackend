@@ -46,7 +46,7 @@ MODEL_PATH = os.path.join(BASE_DIR, "best_mobilenetv3.keras")
 
 os.makedirs(STATIC_DIR, exist_ok=True)
 
-CLASS_LABELS = ["Black Blight", "Grey Blight", "Spider Mites", "Healthy"]
+CLASS_LABELS = ["Black Blight", "Grey Blight", "Healthy", "Spider Mites"]
 IMG_SIZE = (224, 224)
 
 model = load_model(MODEL_PATH)
